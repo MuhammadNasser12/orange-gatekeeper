@@ -1,0 +1,58 @@
+You are a Senior Enterprise Java Architect and Middleware DevOps Engineer at Orange Egypt. I need you to build a complete, production-ready internal web application called "Orange Egypt — Deployment Gatekeeper & Central Staging Portal" to replace manual email-based deployment handovers between our Development team and Application/Integration Support (Middleware) team.
+
+### 1. Environment & Technical Constraints (CRITICAL)
+- **Target OS:** Linux Server (`[INSERT_LINUX_DISTRO, e.g., RHEL 8]`)
+- **Java Version Installed on Server:** Java `[INSERT_JAVA_VERSION, e.g., 17 or 11 or 8]`
+- **Zero Extra Approvals Constraint:** I cannot install Python, external databases, or external web servers on this host. The entire application MUST compile into a single **Standalone Executable Fat JAR** (Spring Boot with Embedded Tomcat).
+- **Persistence:** Use an embedded file-based database (H2 in file-persistence mode or local JSON registry file) stored directly inside the central directory so no external DB installation is required.
+- **Air-Gapped Frontend:** The server has no public internet access. Do NOT use external CDNs (no Bootstrap/Tailwind links). Use inline CSS and Vanilla JS only.
+- **Brand Identity:** Orange Egypt corporate dark theme (`#FF7900` signature Orange, `#000000` header, `#0D0D0D` canvas, `#161616` surface cards). Strictly NO emojis anywhere in the UI, code, or logs.
+
+### 2. External `domains.txt` Configuration File Requirement
+- In the **same directory where the project/JAR runs** (`./domains.txt`), there is an external plain-text file named `domains.txt` containing the list of Orange Egypt integration domains (one domain per line, ignoring empty lines and `#` comments).
+- Create a backend endpoint `GET /api/domains` that dynamically reads `./domains.txt` from disk on every request (using `Files.readAllLines(Paths.get("./domains.txt"))`) so that adding a new line to `domains.txt` immediately updates the Domain dropdowns in both the **Ops View** and **Dev View** without recompiling the JAR.
+
+### 3. Server Paths & Distribution Context
+- **Application Port:** `[INSERT_PORT, e.g., 8085]`
+- **Central Staging Directory Path:** `[INSERT_CENTRAL_DIR_PATH, e.g., /opt/orange/shared_deployments]`
+- **Domain-to-Nodes Distribution Mapping (Backend):** `[INSERT_HOW_CENTRAL_DIR_DISTRIBUTES_FILES, e.g., rsync/scp via ProcessBuilder or shared NFS paths]`
+
+### 4. Exact Functional & View Specifications
+
+#### A. DEV VIEW (Submit Deployment Form)
+1. **Strictly Excluded Fields:** Do NOT include a Team field, do NOT include a Target Environment field, and do NOT include a Target Nodes selection section.
+2. **Exact Required Form Fields:**
+   - **Developer Name / CUID** (Text input)
+   - **Ticket / Change Request ID** (Text input)
+   - **Domain** (Dropdown dynamically populated from `./domains.txt`)
+   - **Service / Package Name** (Text input)
+   - **Package Type** (Dropdown with ONLY two options: `Code` and `Configurations`)
+     - *Mapping Rule:* When a developer selects `Code`, the backend must store/map its Ops Component Type as `webMethods IS Package`. When a developer selects `Configurations`, it maps to `Configurations`.
+   - **Artifact Upload** (File upload supporting `.zip`, `.jar`, `.ispackage`, `.cfg`, `.xml`, `.properties`, `.sql`)
+   - **Deployment Instructions & Pre-requisites** (Mandatory structured textarea)
+   - **Rollback Plan** (Mandatory structured textarea)
+3. **Backend Action on Dev Submission (`POST /api/deployments`):**
+   - Create a standardized release directory inside the Central Staging Directory: `<YYYY-MM-DD>_<DOMAIN>_<TICKET_ID>_<SERVICE_NAME>/`.
+   - Save the uploaded file inside an `artifacts/` subfolder.
+   - Compute the `SHA-256` checksum of the uploaded file.
+   - Generate `manifest.json` and `release_notes.txt` inside the release folder.
+   - Save the record with initial status `Submitted` so it immediately reflects in the **Ops View**.
+
+#### B. OPS VIEW (Support Control Center)
+1. **Strictly Excluded Fields:** Do NOT include any Target Environment filter or column.
+2. **All deployments displayed in the Ops View MUST be imported/sourced directly from the Dev View submissions.**
+3. **Exact Filter Bar Controls:**
+   - **Search Input:** Filter by Ticket ID, Service/Package Name, Developer, or SHA-256.
+   - **Domain Filter:** `All` + all domains dynamically read from `./domains.txt`.
+   - **Component Type Filter:** Exact options: `All`, `webMethods IS Package`, `Configurations`.
+   - **Status Filter:** Exact options: `All`, `Submitted`, `Deployed`, `Rolled Back`.
+4. **Ops Actions:**
+   - **Inspect / Status Modal:** View full release notes, rollback plan, central directory file path, and SHA-256 hash. Allow Support Engineers to update the status between `Submitted`, `Deployed`, and `Rolled Back` (`PATCH /api/deployments/{id}/status`) with audit comments.
+   - **Distribute Action (`POST /api/deployments/{id}/distribute`):** Trigger distribution from the Central Staging Directory to the target domain path and capture execution logs.
+
+### 5. Deliverables Requested
+1. Complete project structure and `pom.xml` compatible with Java `[INSERT_JAVA_VERSION]`.
+2. Sample `./domains.txt` file.
+3. Full Spring Boot Java backend source code (DomainReaderService, DeploymentController, FileStagingService, ChecksumUtil, Persistence).
+4. Integration of the single-file Orange Egypt Frontend (`index.html`) connected to the REST APIs.
+5. Linux startup script (`nohup` / `systemd` unit file) to run the JAR in the background alongside `./domains.txt`.

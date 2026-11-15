@@ -1,0 +1,12 @@
+orange-gatekeeper/
+├── pom.xml
+├── domains.txt
+└── src/
+    └── main/
+        ├── java/
+        │   └── com/orange/gatekeeper/
+        │       └── GatekeeperApplication.java
+        └── resources/
+            ├── application.properties
+            └── static/
+                └── index.html
