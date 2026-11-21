@@ -1,504 +1,1175 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orange Egypt | Deployment Gatekeeper</title>
-    <style>
-        :root {
-            --orange: #FF7900;
-            --orange-hover: #E56D00;
-            --bg-dark: #0D0D0D;
-            --surface: #161616;
-            --surface-alt: #1F1F1F;
-            --border: #2D2D2D;
-            --text-main: #F5F5F5;
-            --text-muted: #9E9E9E;
-            --status-submitted: #FF7900;
-            --status-deployed: #2EA043;
-            --status-rollback: #F85149;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        header {
-            background-color: #000000;
-            border-bottom: 2px solid var(--orange);
-            padding: 14px 28px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-        .orange-logo {
-            width: 38px;
-            height: 38px;
-            background-color: var(--orange);
-            display: flex;
-            align-items: flex-end;
-            padding: 4px;
-            font-weight: 700;
-            font-size: 9px;
-            color: #FFFFFF;
-            letter-spacing: 0.3px;
-        }
-        .brand-title h1 {
-            font-size: 17px;
-            font-weight: 700;
-            letter-spacing: 0.4px;
-        }
-        .brand-title span {
-            font-size: 11px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-        }
-        .nav-tabs {
-            display: flex;
-            gap: 10px;
-        }
-        .tab-btn {
-            background: var(--surface);
-            color: var(--text-main);
-            border: 1px solid var(--border);
-            padding: 9px 18px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 13px;
-            border-radius: 3px;
-        }
-        .tab-btn.active {
-            background: var(--orange);
-            color: #000000;
-            border-color: var(--orange);
-        }
-        main {
-            max-width: 1400px;
-            margin: 24px auto;
-            padding: 0 24px;
-        }
-        .view-panel { display: none; }
-        .view-panel.active { display: block; }
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        .filter-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr auto;
-            gap: 12px;
-            align-items: end;
-        }
-        label {
-            display: block;
-            font-size: 11px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 6px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-        input, select, textarea {
-            width: 100%;
-            background: var(--surface-alt);
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            padding: 9px 12px;
-            border-radius: 3px;
-            font-size: 13px;
-            font-family: inherit;
-        }
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: var(--orange);
-        }
-        .btn {
-            background: var(--orange);
-            color: #000000;
-            border: none;
-            padding: 9px 16px;
-            font-weight: 700;
-            font-size: 12px;
-            cursor: pointer;
-            border-radius: 3px;
-            text-transform: uppercase;
-        }
-        .btn:hover { background: var(--orange-hover); }
-        .btn-secondary {
-            background: var(--surface-alt);
-            color: var(--text-main);
-            border: 1px solid var(--border);
-        }
-        .btn-secondary:hover { border-color: var(--orange); background: #262626; }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 8px;
-        }
-        th, td {
-            text-align: left;
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-            font-size: 13px;
-        }
-        th {
-            font-size: 11px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            background: #121212;
-        }
-        .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            font-size: 11px;
-            font-weight: 700;
-            border-radius: 2px;
-            text-transform: uppercase;
-        }
-        .badge-Submitted { background: rgba(255, 121, 0, 0.18); color: var(--status-submitted); border: 1px solid var(--status-submitted); }
-        .badge-Deployed { background: rgba(46, 160, 67, 0.18); color: var(--status-deployed); border: 1px solid var(--status-deployed); }
-        .badge-Rolled { background: rgba(248, 81, 73, 0.18); color: var(--status-rollback); border: 1px solid var(--status-rollback); }
-        .mono { font-family: Consolas, Monaco, monospace; font-size: 12px; }
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-        .full-width { grid-column: 1 / -1; }
-        .modal-backdrop {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.8);
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-        }
-        .modal-backdrop.open { display: flex; }
-        .modal {
-            background: var(--surface);
-            border: 1px solid var(--orange);
-            width: 90%;
-            max-width: 760px;
-            max-height: 88vh;
-            overflow-y: auto;
-            padding: 24px;
-            border-radius: 4px;
-        }
-        pre {
-            background: #090909;
-            border: 1px solid var(--border);
-            padding: 12px;
-            font-family: Consolas, monospace;
-            font-size: 12px;
-            white-space: pre-wrap;
-            margin-top: 6px;
-            color: #D4D4D4;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orange Egypt — Deployment Gatekeeper & Central Staging Portal</title>
+  <style>
+    :root {
+      --bg-canvas: #0D0D0D;
+      --bg-header: #000000;
+      --bg-surface: #161616;
+      --bg-elevated: #1F1F1F;
+      --bg-terminal: #080808;
+      --bg-hover: #262626;
+      --text-primary: #F5F5F5;
+      --text-secondary: #A3A3A3;
+      --text-muted: #6E6E6E;
+      --orange-brand: #FF7900;
+      --orange-hover: #E56D00;
+      --orange-dim: rgba(255, 121, 0, 0.14);
+      --status-deployed: #3FB950;
+      --status-deployed-bg: rgba(63, 185, 80, 0.14);
+      --status-rollback: #F85149;
+      --status-rollback-bg: rgba(248, 81, 73, 0.14);
+      --border-subtle: #2A2A2A;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      line-height: 1.45;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      background-color: var(--bg-header);
+      border-bottom: 2px solid var(--orange-brand);
+      padding: 0 20px;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .orange-logo-box {
+      width: 38px;
+      height: 38px;
+      background-color: var(--orange-brand);
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      padding: 4px 4px;
+      flex-shrink: 0;
+    }
+    .orange-logo-box span {
+      color: #FFFFFF;
+      font-family: Arial, Helvetica, sans-serif;
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: -0.3px;
+      line-height: 1;
+    }
+    .brand-title { display: flex; flex-direction: column; }
+    .brand-title .main { font-weight: 700; font-size: 14px; letter-spacing: 0.4px; color: #FFFFFF; }
+    .brand-title .sub { font-size: 10px; color: var(--orange-brand); font-family: var(--font-mono); text-transform: uppercase; }
+
+    .nav-tabs { display: flex; gap: 6px; height: 60px; align-items: center; flex-wrap: wrap; }
+    .nav-tab {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 0 14px;
+      height: 100%;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      text-transform: uppercase;
+    }
+    .nav-tab:hover { color: #FFFFFF; background-color: rgba(255, 121, 0, 0.06); }
+    .nav-tab.active { color: var(--orange-brand); border-bottom-color: var(--orange-brand); background-color: rgba(255, 121, 0, 0.09); }
+    .nav-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 2px;
+      background-color: var(--bg-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+    }
+    .nav-tab.active .nav-badge { background-color: var(--orange-brand); color: #000000; font-weight: 700; }
+
+    .main-container {
+      width: 100%;
+      max-width: 1520px;
+      margin: 0 auto;
+      padding: 18px 20px;
+      flex: 1;
+    }
+    .view-section { display: none; }
+    .view-section.active { display: block; }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .kpi-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--orange-brand);
+      border-radius: 3px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-secondary); font-weight: 700; }
+    .kpi-value { font-size: 22px; font-weight: 700; font-family: var(--font-mono); }
+    .kpi-sub { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+
+    .toolbar {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 3px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .filter-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; flex: 1; }
+    .filter-item { display: flex; align-items: center; gap: 6px; }
+    .filter-label { font-size: 10px; font-family: var(--font-mono); text-transform: uppercase; color: var(--text-secondary); font-weight: 700; }
+
+    .input-control, .select-control, .textarea-control {
+      background-color: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      padding: 7px 10px;
+      border-radius: 2px;
+      outline: none;
+    }
+    .input-control:focus, .select-control:focus, .textarea-control:focus { border-color: var(--orange-brand); }
+    .search-input { min-width: 220px; }
+
+    .btn {
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 7px 12px;
+      border-radius: 2px;
+      border: 1px solid var(--border-subtle);
+      background-color: var(--bg-elevated);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+    }
+    .btn:hover { background-color: var(--bg-hover); border-color: var(--orange-brand); }
+    .btn-primary { background-color: var(--orange-brand); border-color: var(--orange-brand); color: #000000; }
+    .btn-primary:hover { background-color: var(--orange-hover); color: #000000; }
+    .btn-update-action {
+      background-color: #FF7900;
+      border: 1px solid #FF9A3C;
+      color: #000000;
+      font-weight: 800;
+      box-shadow: 0 0 10px rgba(255, 121, 0, 0.35);
+    }
+    .btn-update-action:hover { background-color: #FFA040; color: #000000; }
+    .btn-sm { padding: 5px 9px; font-size: 10px; }
+
+    .table-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 3px;
+      overflow-x: auto;
+    }
+    .data-table { width: 100%; border-collapse: collapse; text-align: left; }
+    .data-table th {
+      background-color: #0A0A0A;
+      color: var(--text-secondary);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .data-table td {
+      padding: 11px 10px;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: middle;
+      font-size: 12px;
+    }
+    .data-table tbody tr:hover { background-color: rgba(255, 121, 0, 0.04); }
+
+    .mono { font-family: var(--font-mono); font-size: 11px; }
+    .ticket-tag {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--orange-brand);
+      background-color: var(--orange-dim);
+      padding: 2px 6px;
+      border-radius: 2px;
+      border: 1px solid rgba(255, 121, 0, 0.35);
+      font-size: 11px;
+      display: inline-block;
+    }
+    .auto-uuid-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 2px;
+      background-color: rgba(63, 185, 80, 0.15);
+      color: var(--status-deployed);
+      border: 1px solid rgba(63, 185, 80, 0.35);
+      text-transform: uppercase;
+      margin-left: 4px;
+    }
+    .domain-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 2px;
+      background-color: #222222;
+      color: #FFFFFF;
+      border-left: 2px solid var(--orange-brand);
+      display: inline-block;
+    }
+    .comp-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 2px;
+      background-color: var(--bg-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      display: inline-block;
+    }
+    .infra-pill {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 5px;
+      border-radius: 2px;
+      background-color: rgba(255, 121, 0, 0.14);
+      color: var(--orange-brand);
+      border: 1px solid rgba(255, 121, 0, 0.35);
+      display: inline-block;
+      margin: 1px 2px 1px 0;
+    }
+    .file-entry-pill {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 3px 6px;
+      border-radius: 2px;
+      background-color: #101010;
+      border: 1px solid var(--border-subtle);
+      display: block;
+      margin-bottom: 3px;
+    }
+    .file-entry-pill.updated {
+      border-color: var(--orange-brand);
+      background-color: rgba(255, 121, 0, 0.12);
+      color: #FFFFFF;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 2px;
+      text-transform: uppercase;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .st-SUBMITTED { background-color: var(--orange-dim); color: var(--orange-brand); border: 1px solid rgba(255, 121, 0, 0.4); }
+    .st-SUBMITTED .status-dot { background-color: var(--orange-brand); }
+    .st-DEPLOYED { background-color: var(--status-deployed-bg); color: var(--status-deployed); border: 1px solid rgba(63, 185, 80, 0.4); }
+    .st-DEPLOYED .status-dot { background-color: var(--status-deployed); }
+    .st-ROLLED_BACK { background-color: var(--status-rollback-bg); color: var(--status-rollback); border: 1px solid rgba(248, 81, 73, 0.4); }
+    .st-ROLLED_BACK .status-dot { background-color: var(--status-rollback); }
+
+    .form-layout { display: grid; grid-template-columns: 1.35fr 1fr; gap: 18px; }
+    .panel-card { background-color: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 3px; overflow: hidden; }
+    .panel-header {
+      background-color: #0A0A0A;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--orange-brand);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .panel-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .panel-body { padding: 16px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .req { color: var(--orange-brand); }
+    .opt-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-muted);
+      background-color: var(--bg-elevated);
+      padding: 1px 5px;
+      border-radius: 2px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .checks-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 2px; }
+    .check-card {
+      background-color: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      border-radius: 2px;
+      padding: 9px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    .check-card input[type="checkbox"] { accent-color: var(--orange-brand); width: 15px; height: 15px; cursor: pointer; }
+    .check-card span { font-family: var(--font-mono); font-size: 11px; font-weight: 700; }
+
+    .mode-switcher {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+      background-color: #0B0B0B;
+      padding: 8px;
+      border: 1px solid var(--border-subtle);
+      border-radius: 3px;
+    }
+    .mode-btn {
+      padding: 10px 12px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      border: 1px solid var(--border-subtle);
+      background-color: var(--bg-elevated);
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-radius: 2px;
+      text-align: center;
+    }
+    .mode-btn.active {
+      background-color: var(--orange-brand);
+      color: #000000;
+      border-color: var(--orange-brand);
+    }
+
+    .terminal-box {
+      background-color: var(--bg-terminal);
+      border: 1px solid var(--border-subtle);
+      border-radius: 2px;
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.5;
+      color: #D4D4D4;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.84);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 16px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-window {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--orange-brand);
+      border-radius: 3px;
+      width: 100%;
+      max-width: 820px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header {
+      background-color: #000000;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-body { padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+    .modal-footer {
+      background-color: #0A0A0A;
+      padding: 11px 18px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    @media (max-width: 1100px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .form-layout { grid-template-columns: 1fr; }
+      .checks-grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
 
-<header>
+  <header class="topbar">
     <div class="brand">
-        <div class="orange-logo">orange</div>
-        <div class="brand-title">
-            <h1>DEPLOYMENT GATEKEEPER</h1>
-            <span>Orange Egypt Middleware &amp; Integration Staging Portal</span>
-        </div>
+      <div class="orange-logo-box"><span>orange</span></div>
+      <div class="brand-title">
+        <span class="main">ORANGE EGYPT — DEPLOYMENT GATEKEEPER</span>
+        <span class="sub">Middleware Handover &amp; ./inbound/ Manifest Generator</span>
+      </div>
     </div>
-    <div class="nav-tabs">
-        <button class="tab-btn active" onclick="switchView('opsView', this)">OPS VIEW (CONTROL CENTER)</button>
-        <button class="tab-btn" onclick="switchView('devView', this)">DEV VIEW (SUBMIT HANDOVER)</button>
-    </div>
-</header>
 
-<main>
-    <!-- OPS VIEW -->
-    <section id="opsView" class="view-panel active">
-        <div class="card">
-            <div class="filter-grid">
-                <div>
-                    <label>Search (Ticket / Service / Developer / SHA-256)</label>
-                    <input type="text" id="searchFilter" placeholder="Filter records..." oninput="renderOpsTable()">
-                </div>
-                <div>
-                    <label>Domain (./domains.txt)</label>
-                    <select id="opsDomainFilter" onchange="renderOpsTable()">
-                        <option value="All">All</option>
-                    </select>
-                </div>
-                <div>
-                    <label>Component Type</label>
-                    <select id="opsComponentFilter" onchange="renderOpsTable()">
-                        <option value="All">All</option>
-                        <option value="webMethods IS Package">webMethods IS Package</option>
-                        <option value="Configurations">Configurations</option>
-                    </select>
-                </div>
-                <div>
-                    <label>Status</label>
-                    <select id="opsStatusFilter" onchange="renderOpsTable()">
-                        <option value="All">All</option>
-                        <option value="Submitted">Submitted</option>
-                        <option value="Deployed">Deployed</option>
-                        <option value="Rolled Back">Rolled Back</option>
-                    </select>
-                </div>
-                <div>
-                    <button class="btn btn-secondary" onclick="loadData()">REFRESH</button>
-                </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" onclick="switchView('ops', this)">
+        OPS VIEW (CONTROL CENTER)
+        <span class="nav-badge" id="navPendingBadge">0</span>
+      </button>
+      <button class="nav-tab" onclick="switchView('dev', this)">
+        DEV VIEW (SUBMIT / UPDATE)
+      </button>
+      <button class="nav-tab" onclick="switchView('inbound', this)">
+        INBOUND DIR (./inbound/) &amp; DOMAINS.TXT
+        <span class="nav-badge" id="navInboundBadge">0</span>
+      </button>
+    </nav>
+
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button class="btn btn-update-action btn-sm" onclick="openQuickUpdateSelector()">
+        + UPDATE EXISTING DEPLOYMENT (APPEND _updated)
+      </button>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <!-- VIEW 1: OPS VIEW -->
+    <section id="view-ops" class="view-section active">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-label">Total Handovers</span>
+          <span class="kpi-value" id="kpiTotal">0</span>
+          <span class="kpi-sub">Imported from Dev View</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Submitted (Pending Ops)</span>
+          <span class="kpi-value" id="kpiSubmitted" style="color: var(--orange-brand);">0</span>
+          <span class="kpi-sub">Saved in ./inbound/*.txt</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Deployed</span>
+          <span class="kpi-value" id="kpiDeployed" style="color: var(--status-deployed);">0</span>
+          <span class="kpi-sub">Verified &amp; Distributed</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Rolled Back</span>
+          <span class="kpi-value" id="kpiRolledBack" style="color: var(--status-rollback);">0</span>
+          <span class="kpi-sub">Reverted Packages</span>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="filter-group">
+          <div class="filter-item">
+            <span class="filter-label">Search:</span>
+            <input type="text" id="filterSearch" class="input-control search-input" placeholder="Ticket / UUID, Service, Business Service, Dev..." oninput="renderOpsTable()" />
+          </div>
+          <div class="filter-item">
+            <span class="filter-label">Domain:</span>
+            <select id="filterDomain" class="select-control" onchange="renderOpsTable()">
+              <option value="All">All</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <span class="filter-label">Component Type:</span>
+            <select id="filterCompType" class="select-control" onchange="renderOpsTable()">
+              <option value="All">All</option>
+              <option value="webMethods IS Package">webMethods IS Package</option>
+              <option value="Configurations">Configurations</option>
+              <option value="webMethods IS Package & Configurations">webMethods IS Package &amp; Configurations</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <span class="filter-label">Status:</span>
+            <select id="filterStatus" class="select-control" onchange="renderOpsTable()">
+              <option value="All">All</option>
+              <option value="Submitted">Submitted</option>
+              <option value="Deployed">Deployed</option>
+              <option value="Rolled Back">Rolled Back</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-sm" onclick="loadAllData()">REFRESH</button>
+      </div>
+
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID &amp; Ticket / Auto-UUID</th>
+              <th>Domain &amp; Business Service</th>
+              <th>Service &amp; Component</th>
+              <th>Provisioning Checks</th>
+              <th>Developer &amp; Mail</th>
+              <th>Staged Files (Same Dir)</th>
+              <th>Status</th>
+              <th>Actions (Update / Ops)</th>
+            </tr>
+          </thead>
+          <tbody id="opsTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- VIEW 2: DEV VIEW -->
+    <section id="view-dev" class="view-section">
+      <div class="form-layout">
+        <div class="panel-card">
+          <div class="panel-header">
+            <span class="panel-title">Developer Handover &amp; Package Update</span>
+          </div>
+          <div class="panel-body">
+            <div class="mode-switcher">
+              <button type="button" id="modeBtnNew" class="mode-btn active" onclick="setDevMode('new')">
+                [MODE 1: NEW DEPLOYMENT HANDOVER]
+              </button>
+              <button type="button" id="modeBtnUpdate" class="mode-btn" onclick="setDevMode('update')">
+                [MODE 2: UPDATE EXISTING DEPLOYMENT (APPEND _updated)]
+              </button>
             </div>
-        </div>
 
-        <div class="card">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID / Timestamp</th>
-                        <th>Ticket ID</th>
-                        <th>Domain</th>
-                        <th>Service / Package</th>
-                        <th>Component Type</th>
-                        <th>Developer</th>
-                        <th>Artifact &amp; SHA-256</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="opsTableBody"></tbody>
-            </table>
-        </div>
-    </section>
-
-    <!-- DEV VIEW -->
-    <section id="devView" class="view-panel">
-        <div class="card">
-            <h2 style="margin-bottom: 16px; font-size: 16px; color: var(--orange);">SUBMIT NEW DEPLOYMENT PACKAGE</h2>
-            <form id="devForm" onsubmit="submitDeployment(event)">
-                <div class="form-grid">
-                    <div>
-                        <label>Developer Name / CUID *</label>
-                        <input type="text" id="devName" required placeholder="e.g. a.hassan">
-                    </div>
-                    <div>
-                        <label>Ticket / Change Request ID *</label>
-                        <input type="text" id="ticketId" required placeholder="e.g. CR-90412">
-                    </div>
-                    <div>
-                        <label>Domain (Read from ./domains.txt) *</label>
-                        <select id="devDomain" required></select>
-                    </div>
-                    <div>
-                        <label>Service / Package Name *</label>
-                        <input type="text" id="serviceName" required placeholder="e.g. OEG_PaymentIntegration_IS">
-                    </div>
-                    <div>
-                        <label>Package Type *</label>
-                        <select id="packageType" required>
-                            <option value="Code">Code</option>
-                            <option value="Configurations">Configurations</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Upload Artifact (.zip, .ispackage, .jar, .cfg, .xml) *</label>
-                        <input type="file" id="artifactFile" required>
-                    </div>
-                    <div class="full-width">
-                        <label>Deployment Instructions &amp; Pre-requisites *</label>
-                        <textarea id="instructions" rows="4" required placeholder="Specify exact installation order, IS package activation, or configuration properties..."></textarea>
-                    </div>
-                    <div class="full-width">
-                        <label>Rollback Plan *</label>
-                        <textarea id="rollbackPlan" rows="3" required placeholder="Specify exact rollback snapshot or backup package recovery procedure..."></textarea>
-                    </div>
+            <!-- MODE 1: NEW DEPLOYMENT FORM -->
+            <form id="devForm" onsubmit="handleDevSubmit(event)">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label"><span>Developer Name / CUID <span class="req">*</span></span></label>
+                  <input type="text" id="devName" class="input-control" placeholder="e.g. m.nazir" required />
                 </div>
-                <button type="submit" class="btn" id="submitBtn">STAGE ARTIFACT TO CENTRAL DIRECTORY</button>
+                <div class="form-group">
+                  <label class="form-label"><span>Developer Mail <span class="req">*</span></span></label>
+                  <input type="email" id="devMail" class="input-control" placeholder="e.g. m.nazir@orange.com" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">
+                    <span>Ticket / Change Request ID</span>
+                    <span class="opt-tag">OPTIONAL (AUTO-UUID)</span>
+                  </label>
+                  <input type="text" id="devTicket" class="input-control" placeholder="Leave blank to auto-generate UUID v4" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label"><span>Domain (./domains.txt) <span class="req">*</span></span></label>
+                  <select id="devDomain" class="select-control" required></select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label"><span>Business Service <span class="req">*</span></span></label>
+                  <input type="text" id="devBusinessService" class="input-control" placeholder="e.g. Customer Offer Activation" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label"><span>Service / Package Name <span class="req">*</span></span></label>
+                  <input type="text" id="devService" class="input-control" placeholder="e.g. OEG_CustomerOffer_IS" required />
+                </div>
+                <div class="form-group full">
+                  <label class="form-label"><span>Package Type <span class="req">*</span></span></label>
+                  <select id="devPkgType" class="select-control" required>
+                    <option value="Code">Code (Maps to: webMethods IS Package)</option>
+                    <option value="Configurations">Configurations (Maps to: Configurations)</option>
+                    <option value="Code & Configurations">Code &amp; Configurations (Maps to: webMethods IS Package &amp; Configurations)</option>
+                  </select>
+                </div>
+                <div class="form-group full">
+                  <label class="form-label"><span>Infrastructure &amp; Provisioning Checks</span></label>
+                  <div class="checks-grid">
+                    <label class="check-card">
+                      <input type="checkbox" id="chkScheduler" />
+                      <span>Create Scheduler</span>
+                    </label>
+                    <label class="check-card">
+                      <input type="checkbox" id="chkConnection" />
+                      <span>Create Connection</span>
+                    </label>
+                    <label class="check-card">
+                      <input type="checkbox" id="chkQueue" />
+                      <span>Create Queue</span>
+                    </label>
+                  </div>
+                </div>
+                <div class="form-group full">
+                  <label class="form-label">
+                    <span>Description</span>
+                    <span class="opt-tag">OPTIONAL</span>
+                  </label>
+                  <textarea id="devDescription" class="textarea-control" rows="2" placeholder="Optional summary of the release..."></textarea>
+                </div>
+                <div class="form-group full">
+                  <label class="form-label"><span>Artifact File Upload <span class="req">*</span></span></label>
+                  <input type="file" id="devFileInput" class="input-control" required />
+                </div>
+                <div class="form-group full">
+                  <label class="form-label">
+                    <span>Deployment Instructions &amp; Pre-requisites</span>
+                    <span class="opt-tag">OPTIONAL</span>
+                  </label>
+                  <textarea id="devInstructions" class="textarea-control" rows="3" placeholder="Optional deployment steps..."></textarea>
+                </div>
+                <div class="form-group full">
+                  <label class="form-label">
+                    <span>Rollback Plan</span>
+                    <span class="opt-tag">OPTIONAL</span>
+                  </label>
+                  <textarea id="devRollback" class="textarea-control" rows="2" placeholder="Optional rollback steps..."></textarea>
+                </div>
+                <div class="form-group full" style="margin-top:6px;">
+                  <button type="submit" class="btn btn-primary" id="submitBtn" style="padding:11px 18px;">
+                    STAGE ARTIFACT TO CENTRAL DIRECTORY &amp; SAVE TO ./inbound/
+                  </button>
+                </div>
+              </div>
             </form>
+
+            <!-- MODE 2: INLINE UPDATE EXISTING DEPLOYMENT FORM -->
+            <form id="inlineUpdateForm" style="display:none;" onsubmit="handleInlineUpdateSubmit(event)">
+              <div class="form-grid">
+                <div class="form-group full">
+                  <label class="form-label"><span>Select Existing Deployment to Update <span class="req">*</span></span></label>
+                  <select id="inlineUpdateTargetId" class="select-control" onchange="renderInlineUpdateInfo()" required></select>
+                </div>
+                <div class="form-group full">
+                  <label class="form-label"><span>Existing Staging Directory &amp; Preserved Files</span></label>
+                  <div class="terminal-box" id="inlineUpdateFilesList" style="max-height:130px;"></div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label"><span>Updated File Type <span class="req">*</span></span></label>
+                  <select id="inlineUpdatePkgType" class="select-control" required>
+                    <option value="Code">Code</option>
+                    <option value="Configurations">Configurations</option>
+                    <option value="Code & Configurations">Code &amp; Configurations</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label"><span>Upload New Artifact (Auto-Appends _updated) <span class="req">*</span></span></label>
+                  <input type="file" id="inlineUpdateFileInput" class="input-control" required />
+                </div>
+                <div class="form-group full">
+                  <label class="form-label"><span>Update Notes</span><span class="opt-tag">OPTIONAL</span></label>
+                  <input type="text" id="inlineUpdateNotes" class="input-control" placeholder="Reason for update..." />
+                </div>
+                <div class="form-group full">
+                  <button type="submit" class="btn btn-update-action" style="padding:11px 18px;">
+                    UPLOAD &amp; APPEND &quot;_updated&quot; TO SAME DIRECTORY
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
+
+        <div class="panel-card">
+          <div class="panel-header">
+            <span class="panel-title">Server Architecture &amp; ./inbound/ Status</span>
+          </div>
+          <div class="panel-body">
+            <div class="terminal-box">All submissions and updates are persisted on the Linux server inside:
+- ./inbound/&lt;DATE&gt;_&lt;TICKET_OR_UUID&gt;_&lt;DOMAIN&gt;_&lt;SERVICE&gt;.txt
+- ./central_staging_dir/staging/&lt;RELEASE_DIR&gt;/artifacts/
+- ./central_staging_dir/registry/deployments.json
+
+When updating an existing deployment:
+1. The newly uploaded file automatically gets "_updated" appended before its extension.
+2. Old file versions remain untouched inside the exact same artifacts/ folder.
+3. The ./inbound/*.txt manifest is updated with the complete file version history.</div>
+          </div>
+        </div>
+      </div>
     </section>
-</main>
 
-<!-- INSPECT MODAL -->
-<div class="modal-backdrop" id="inspectModal">
-    <div class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-            <h3 id="modalTitle" style="color:var(--orange);">Deployment Details</h3>
-            <button class="btn btn-secondary" onclick="closeModal()">CLOSE</button>
+    <!-- VIEW 3: INBOUND DIR & DOMAINS.TXT -->
+    <section id="view-inbound" class="view-section">
+      <div class="form-layout">
+        <div class="panel-card">
+          <div class="panel-header">
+            <span class="panel-title">Generated Handover Files in ./inbound/</span>
+            <button class="btn btn-sm" onclick="loadAllData()">REFRESH ./inbound/</button>
+          </div>
+          <div class="panel-body">
+            <div class="form-group" style="margin-bottom:12px;">
+              <label class="form-label"><span>Select ./inbound/*.txt File</span></label>
+              <select id="inboundFileSelector" class="select-control" onchange="renderSelectedInboundFile()"></select>
+            </div>
+            <div class="terminal-box" id="inboundFileContentBox">No ./inbound/*.txt files generated yet.</div>
+          </div>
         </div>
-        <div id="modalBody"></div>
+
+        <div class="panel-card">
+          <div class="panel-header">
+            <span class="panel-title">External ./domains.txt Configuration</span>
+          </div>
+          <div class="panel-body">
+            <textarea id="domainsEditorTextarea" class="textarea-control mono" rows="18" style="width:100%;"></textarea>
+            <div style="margin-top:10px; display:flex; justify-content:flex-end;">
+              <button class="btn btn-primary" onclick="saveDomainsFile()">SAVE ./domains.txt ON SERVER</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL 1: INSPECT -->
+  <div class="modal-backdrop" id="inspectModal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <span style="font-weight:700; color:var(--orange-brand); font-family:var(--font-mono);" id="inspectModalTitle">INSPECT</span>
+        <button class="btn btn-sm" onclick="closeModal('inspectModal')">CLOSE</button>
+      </div>
+      <div class="modal-body" id="inspectModalBody"></div>
+      <div class="modal-footer">
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-sm" onclick="updateStatusFromModal('Submitted')">SET SUBMITTED</button>
+          <button class="btn btn-primary btn-sm" onclick="updateStatusFromModal('Deployed')">MARK DEPLOYED</button>
+          <button class="btn btn-sm" onclick="updateStatusFromModal('Rolled Back')">MARK ROLLED BACK</button>
+        </div>
+        <button class="btn btn-update-action btn-sm" onclick="openUpdateFromInspect()">+ UPDATE DEPLOYMENT (ADD _updated FILE)</button>
+      </div>
     </div>
-</div>
+  </div>
 
-<script>
-    let allDeployments = [];
-    let domainsList = [];
+  <!-- MODAL 2: UPDATE EXISTING DEPLOYMENT -->
+  <div class="modal-backdrop" id="updateModal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <span style="font-weight:700; color:var(--orange-brand); font-family:var(--font-mono);" id="updateModalTitle">UPDATE DEPLOYMENT</span>
+        <button class="btn btn-sm" onclick="closeModal('updateModal')">CLOSE</button>
+      </div>
+      <form onsubmit="submitModalUpdate(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label"><span>Select Deployment Record</span></label>
+            <select id="modalUpdateSelect" class="select-control" onchange="populateUpdateModalDetails()"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label"><span>Preserved Files in Same Staging Directory</span></label>
+            <div class="terminal-box" id="modalUpdateExistingFiles" style="max-height:135px;"></div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label"><span>Package Type <span class="req">*</span></span></label>
+              <select id="modalUpdatePkgType" class="select-control" required>
+                <option value="Code">Code</option>
+                <option value="Configurations">Configurations</option>
+                <option value="Code & Configurations">Code &amp; Configurations</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label"><span>Select New File (Auto-appends _updated) <span class="req">*</span></span></label>
+              <input type="file" id="modalUpdateFileInput" class="input-control" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label"><span>Update Notes</span><span class="opt-tag">OPTIONAL</span></label>
+            <input type="text" id="modalUpdateNotes" class="input-control" placeholder="Optional notes..." />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm" onclick="closeModal('updateModal')">CANCEL</button>
+          <button type="submit" class="btn btn-update-action">UPLOAD &amp; APPEND &quot;_updated&quot; IN SAME DIRECTORY</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-    async function loadData() {
-        const [domRes, depRes] = await Promise.all([
-            fetch('/api/domains'),
-            fetch('/api/deployments')
-        ]);
-        domainsList = await domRes.json();
-        allDeployments = await depRes.json();
-        populateDomains();
-        renderOpsTable();
+  <script>
+    let deployments = [];
+    let domains = [];
+    let inboundFiles = [];
+    let currentInspectedId = null;
+
+    async function loadAllData() {
+      const [domRes, depRes, inbRes] = await Promise.all([
+        fetch('/api/domains'),
+        fetch('/api/deployments'),
+        fetch('/api/inbound')
+      ]);
+      domains = await domRes.json();
+      deployments = await depRes.json();
+      inboundFiles = await inbRes.json();
+
+      populateDomainSelects();
+      renderOpsTable();
+      renderInboundTab();
+      populateUpdateSelects();
     }
 
-    function populateDomains() {
-        const opsSelect = document.getElementById('opsDomainFilter');
-        const devSelect = document.getElementById('devDomain');
-        const currentOpsVal = opsSelect.value || 'All';
+    function populateDomainSelects() {
+      const opsDom = document.getElementById('filterDomain');
+      const devDom = document.getElementById('devDomain');
+      const prevOps = opsDom.value || 'All';
 
-        opsSelect.innerHTML = '<option value="All">All</option>' +
-            domainsList.map(d => `<option value="${d}">${d}</option>`).join('');
-        opsSelect.value = currentOpsVal;
+      opsDom.innerHTML = '<option value="All">All</option>' +
+        domains.map(d => `<option value="${d}">${d}</option>`).join('');
+      opsDom.value = prevOps;
 
-        devSelect.innerHTML = domainsList.map(d => `<option value="${d}">${d}</option>`).join('');
+      devDom.innerHTML = domains.map(d => `<option value="${d}">${d}</option>`).join('');
+      document.getElementById('domainsEditorTextarea').value =
+        "# Orange Egypt Integration Domains (One domain per line)\n" + domains.join('\n');
     }
 
     function renderOpsTable() {
-        const q = document.getElementById('searchFilter').value.toLowerCase();
-        const dom = document.getElementById('opsDomainFilter').value;
-        const comp = document.getElementById('opsComponentFilter').value;
-        const st = document.getElementById('opsStatusFilter').value;
+      const q = (document.getElementById('filterSearch').value || '').toLowerCase();
+      const dom = document.getElementById('filterDomain').value;
+      const comp = document.getElementById('filterCompType').value;
+      const st = document.getElementById('filterStatus').value;
 
-        const filtered = allDeployments.filter(d => {
-            const matchQ = !q || [d.ticketId, d.serviceName, d.developer, d.sha256, d.id]
-                .some(v => (v || '').toLowerCase().includes(q));
-            const matchDom = dom === 'All' || d.domain === dom;
-            const matchComp = comp === 'All' || d.componentType === comp;
-            const matchSt = st === 'All' || d.status === st;
-            return matchQ && matchDom && matchComp && matchSt;
-        });
+      document.getElementById('kpiTotal').textContent = deployments.length;
+      const subCount = deployments.filter(d => d.status === 'Submitted').length;
+      document.getElementById('kpiSubmitted').textContent = subCount;
+      document.getElementById('kpiDeployed').textContent = deployments.filter(d => d.status === 'Deployed').length;
+      document.getElementById('kpiRolledBack').textContent = deployments.filter(d => d.status === 'Rolled Back').length;
+      document.getElementById('navPendingBadge').textContent = subCount;
+      document.getElementById('navInboundBadge').textContent = inboundFiles.length;
 
-        const tbody = document.getElementById('opsTableBody');
-        if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:28px;">No deployments submitted from Dev View matching criteria.</td></tr>';
-            return;
-        }
+      const filtered = deployments.filter(d => {
+        const matchQ = !q || [d.id, d.ticketId, d.serviceName, d.businessService, d.developer, d.mail, d.sha256]
+          .some(v => (v || '').toLowerCase().includes(q));
+        const matchDom = dom === 'All' || d.domain === dom;
+        const matchComp = comp === 'All' || d.componentType === comp;
+        const matchSt = st === 'All' || d.status === st;
+        return matchQ && matchDom && matchComp && matchSt;
+      });
 
-        tbody.innerHTML = filtered.map(d => {
-            const badgeClass = 'badge-' + d.status.split(' ')[0];
-            return `<tr>
-                <td><strong class="mono">${d.id}</strong><br><span style="font-size:11px;color:var(--text-muted)">${d.timestamp}</span></td>
-                <td class="mono">${d.ticketId}</td>
-                <td><strong>${d.domain}</strong></td>
-                <td>${d.serviceName}</td>
-                <td>${d.componentType}</td>
-                <td>${d.developer}</td>
-                <td class="mono">${d.fileName}<br><span style="font-size:11px;color:var(--text-muted)">SHA256: ${d.sha256.substring(0, 12)}...</span></td>
-                <td><span class="badge ${badgeClass}">${d.status}</span></td>
-                <td>
-                    <button class="btn btn-secondary" onclick="inspectRecord('${d.id}')">INSPECT</button>
-                    <button class="btn" onclick="distributeRecord('${d.id}')">DISTRIBUTE</button>
-                </td>
-            </tr>`;
+      const tbody = document.getElementById('opsTableBody');
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:28px; color:var(--text-muted);">No deployments found. Submit a deployment in Dev View.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(d => {
+        const stKey = d.status.toUpperCase().replace(' ', '_');
+        const checks = [];
+        if (d.createScheduler) checks.push('<span class="infra-pill">Create Scheduler</span>');
+        if (d.createConnection) checks.push('<span class="infra-pill">Create Connection</span>');
+        if (d.createQueue) checks.push('<span class="infra-pill">Create Queue</span>');
+        const checksHtml = checks.length ? checks.join(' ') : '<span class="mono" style="color:var(--text-muted);">None</span>';
+
+        const filesList = (d.files && d.files.length) ? d.files : [{ name: d.fileName, type: 'ORIGINAL' }];
+        const filesHtml = filesList.map(f => {
+          const isUpd = f.type === 'UPDATED';
+          return `<span class="file-entry-pill ${isUpd ? 'updated' : ''}">[${isUpd ? '+UPDATED' : 'ORIG'}] ${f.name}</span>`;
         }).join('');
-    }
 
-    async function submitDeployment(e) {
-        e.preventDefault();
-        const btn = document.getElementById('submitBtn');
-        btn.disabled = true;
-        btn.textContent = 'UPLOADING & HASHING...';
-
-        const fd = new FormData();
-        fd.append('developer', document.getElementById('devName').value);
-        fd.append('ticketId', document.getElementById('ticketId').value);
-        fd.append('domain', document.getElementById('devDomain').value);
-        fd.append('serviceName', document.getElementById('serviceName').value);
-        fd.append('packageType', document.getElementById('packageType').value);
-        fd.append('instructions', document.getElementById('instructions').value);
-        fd.append('rollbackPlan', document.getElementById('rollbackPlan').value);
-        fd.append('artifact', document.getElementById('artifactFile').files[0]);
-
-        const res = await fetch('/api/deployments', { method: 'POST', body: fd });
-        btn.disabled = false;
-        btn.textContent = 'STAGE ARTIFACT TO CENTRAL DIRECTORY';
-
-        if (res.ok) {
-            document.getElementById('devForm').reset();
-            await loadData();
-            switchView('opsView', document.querySelectorAll('.tab-btn')[0]);
-        } else {
-            alert('Upload failed.');
-        }
-    }
-
-    function inspectRecord(id) {
-        const d = allDeployments.find(x => x.id === id);
-        if (!d) return;
-        document.getElementById('modalTitle').textContent = `${d.id} | ${d.ticketId} — ${d.serviceName}`;
-        document.getElementById('modalBody').innerHTML = `
-            <p><strong>Domain:</strong> ${d.domain} | <strong>Component Type:</strong> ${d.componentType} (Dev Input: ${d.packageType})</p>
-            <p style="margin-top:6px;"><strong>Central Staging Path:</strong> <span class="mono">${d.stagingPath}</span></p>
-            <p style="margin-top:6px;"><strong>Full SHA-256 Checksum:</strong> <span class="mono">${d.sha256}</span></p>
-            <div style="margin-top:14px;">
-                <label>Deployment Instructions &amp; Pre-requisites</label>
-                <pre>${d.instructions}</pre>
+        return `<tr>
+          <td>
+            <div class="mono" style="font-weight:700;">${d.id}</div>
+            <span class="ticket-tag">${d.ticketId}</span>
+            ${d.isAutoUuid ? '<span class="auto-uuid-tag">AUTO-UUID</span>' : ''}
+            <div class="mono" style="color:var(--text-muted); font-size:10px; margin-top:2px;">${d.timestamp}</div>
+          </td>
+          <td>
+            <span class="domain-badge">${d.domain}</span>
+            <div style="font-weight:600; margin-top:4px;">${d.businessService || '-'}</div>
+          </td>
+          <td>
+            <div style="font-weight:700;">${d.serviceName}</div>
+            <span class="comp-badge" style="margin-top:4px;">${d.componentType}</span>
+          </td>
+          <td>${checksHtml}</td>
+          <td>
+            <div style="font-weight:700;">${d.developer}</div>
+            <div class="mono" style="color:var(--text-secondary); font-size:10px;">${d.mail || ''}</div>
+          </td>
+          <td>${filesHtml}</td>
+          <td>
+            <span class="status-badge st-${stKey}"><span class="status-dot"></span>${d.status}</span>
+          </td>
+          <td>
+            <div style="display:flex; flex-direction:column; gap:5px;">
+              <button class="btn btn-update-action btn-sm" onclick="openUpdateModal('${d.id}')">UPDATE (ADD _updated FILE)</button>
+              <div style="display:flex; gap:5px;">
+                <button class="btn btn-sm" onclick="openInspectModal('${d.id}')">INSPECT</button>
+                <button class="btn btn-primary btn-sm" onclick="distributeDeployment('${d.id}')">DISTRIBUTE</button>
+              </div>
             </div>
-            <div style="margin-top:14px;">
-                <label>Rollback Plan</label>
-                <pre>${d.rollbackPlan}</pre>
-            </div>
-            <div style="margin-top:14px;">
-                <label>Distribution Audit Log</label>
-                <pre>${d.distributionLog}</pre>
-            </div>
-            <div style="margin-top:18px; display:flex; gap:10px; align-items:center;">
-                <label style="margin:0;">Update Status:</label>
-                <button class="btn btn-secondary" onclick="changeStatus('${d.id}', 'Submitted')">SUBMITTED</button>
-                <button class="btn" onclick="changeStatus('${d.id}', 'Deployed')">DEPLOYED</button>
-                <button class="btn btn-secondary" onclick="changeStatus('${d.id}', 'Rolled Back')">ROLLED BACK</button>
-            </div>
-        `;
-        document.getElementById('inspectModal').classList.add('open');
+          </td>
+        </tr>`;
+      }).join('');
     }
 
-    async function changeStatus(id, status) {
-        await fetch(`/api/deployments/${id}/status`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status })
-        });
-        await loadData();
-        inspectRecord(id);
+    async function handleDevSubmit(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = 'STAGING & WRITING ./inbound/*.txt...';
+
+      const fd = new FormData();
+      fd.append('developer', document.getElementById('devName').value);
+      fd.append('mail', document.getElementById('devMail').value);
+      fd.append('ticketId', document.getElementById('devTicket').value);
+      fd.append('domain', document.getElementById('devDomain').value);
+      fd.append('businessService', document.getElementById('devBusinessService').value);
+      fd.append('serviceName', document.getElementById('devService').value);
+      fd.append('packageType', document.getElementById('devPkgType').value);
+      fd.append('createScheduler', document.getElementById('chkScheduler').checked);
+      fd.append('createConnection', document.getElementById('chkConnection').checked);
+      fd.append('createQueue', document.getElementById('chkQueue').checked);
+      fd.append('description', document.getElementById('devDescription').value);
+      fd.append('instructions', document.getElementById('devInstructions').value);
+      fd.append('rollbackPlan', document.getElementById('devRollback').value);
+      fd.append('artifact', document.getElementById('devFileInput').files[0]);
+
+      const res = await fetch('/api/deployments', { method: 'POST', body: fd });
+      btn.disabled = false;
+      btn.textContent = 'STAGE ARTIFACT TO CENTRAL DIRECTORY & SAVE TO ./inbound/';
+
+      if (res.ok) {
+        document.getElementById('devForm').reset();
+        await loadAllData();
+        switchView('ops', document.querySelectorAll('.nav-tab')[0]);
+      } else {
+        alert('Submission failed.');
+      }
     }
 
-    async function distributeRecord(id) {
-        const res = await fetch(`/api/deployments/${id}/distribute`, { method: 'POST' });
-        if (res.ok) {
-            await loadData();
-            inspectRecord(id);
-        }
+    function setDevMode(mode) {
+      document.getElementById('modeBtnNew').classList.toggle('active', mode === 'new');
+      document.getElementById('modeBtnUpdate').classList.toggle('active', mode === 'update');
+      document.getElementById('devForm').style.display = mode === 'new' ? 'block' : 'none';
+      document.getElementById('inlineUpdateForm').style.display = mode === 'update' ? 'block' : 'none';
+      if (mode === 'update') {
+        populateUpdateSelects();
+        renderInlineUpdateInfo();
+      }
     }
 
-    function closeModal() {
-        document.getElementById('inspectModal').classList.remove('open');
+    function populateUpdateSelects() {
+      const html = deployments.map(d =>
+        `<option value="${d.id}">${d.id} | ${d.ticketId} | ${d.domain} — ${d.serviceName}</option>`
+      ).join('');
+      document.getElementById('inlineUpdateTargetId').innerHTML = html;
+      document.getElementById('modalUpdateSelect').innerHTML = html;
     }
 
-    function switchView(viewId, btn) {
-        document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(viewId).classList.add('active');
-        btn.classList.add('active');
+    function renderInlineUpdateInfo() {
+      const id = document.getElementById('inlineUpdateTargetId').value;
+      const d = deployments.find(x => x.id === id);
+      const box = document.getElementById('inlineUpdateFilesList');
+      if (!d) {
+        box.textContent = 'No deployment available.';
+        return;
+      }
+      const list = (d.files || []).map((f, i) => `${i + 1}. [${f.type}] ${f.name} (${f.packageType})`).join('\n');
+      box.textContent = `Directory: ${d.stagingPath}/artifacts/\nFiles currently in directory:\n${list}`;
     }
 
-    window.addEventListener('DOMContentLoaded', loadData);
-</script>
+    async function handleInlineUpdateSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('inlineUpdateTargetId').value;
+      const fd = new FormData();
+      fd.append('packageType', document.getElementById('inlineUpdatePkgType').value);
+      fd.append('updateNotes', document.getElementById('inlineUpdateNotes').value);
+      fd.append('artifact', document.getElementById('inlineUpdateFileInput').files[0]);
+
+      const res = await fetch(`/api/deployments/${id}/update`, { method: 'POST', body: fd });
+      if (res.ok) {
+        document.getElementById('inlineUpdateForm').reset();
+        await loadAllData();
+        switchView('ops', document.querySelectorAll('.nav-tab')[0]);
+      } else {
+        alert('Update failed.');
+      }
+    }
+
+    function openQuickUpdateSelector() {
+      if (deployments.length === 0) {
+        alert('Submit a deployment first before updating.');
+        return;
+      }
+      openUpdateModal(deployments[0].id);
+    }
+
+    function openUpdateModal(id) {
+      populateUpdateSelects();
+      document.getElementById('modalUpdateSelect').value = id;
+      populateUpdateModalDetails();
+      document.getElementById('updateModal').classList.add('open');
+    }
+
+    function populateUpdateModalDetails() {
+      const id = document.getElementById('modalUpdateSelect').value;
+      const d = deployments.find(x => x.id === id);
+      if (!d) return;
+      document.getElementById('updateModalTitle').textContent = `UPDATE ${d.id} (${d.serviceName}) — APPEND _updated`;
+      const list = (d.files || []).map((f, i) => `${i + 1}. [${f.type}] ${f.name} | SHA256: ${f.sha256.substring(0, 14)}...`).join('\n');
+      document.getElementById('modalUpdateExistingFiles').textContent =
+        `Target Directory: ${d.stagingPath}/artifacts/\nPreserved Files:\n${list}`;
+    }
+
+    async function submitModalUpdate(e) {
+      e.preventDefault();
+      const id = document.getElementById('modalUpdateSelect').value;
+      const fd = new FormData();
+      fd.append('packageType', document.getElementById('modalUpdatePkgType').value);
+      fd.append('updateNotes', document.getElementById('modalUpdateNotes').value);
+      fd.append('artifact', document.getElementById('modalUpdateFileInput').files[0]);
+
+      const res = await fetch(`/api/deployments/${id}/update`, { method: 'POST', body: fd });
+      if (res.ok) {
+        document.getElementById('modalUpdateFileInput').value = '';
+        document.getElementById('modalUpdateNotes').value = '';
+        closeModal('updateModal');
+        await loadAllData();
+      } else {
+        alert('Failed to update deployment.');
+      }
+    }
+
+    function openInspectModal(id) {
+      currentInspectedId = id;
+      const d = deployments.find(x => x.id === id);
+      if (!d) return;
+      document.getElementById('inspectModalTitle').textContent = `${d.id} | ${d.ticketId} — ${d.serviceName}`;
+
+      const filesText = (d.files || []).map((f, i) =>
+        `${i + 1}. [${f.type}] ${f.name} | Type: ${f.packageType} | SHA-256: ${f.sha256} | Uploaded: ${f.uploadedAt}`
+      ).join('\n');
+
+      document.getElementById('inspectModalBody').innerHTML = `
+        <div><strong>Domain:</strong> ${d.domain} | <strong>Business Service:</strong> ${d.businessService}</div>
+        <div><strong>Developer:</strong> ${d.developer} (${d.mail}) | <strong>Component:</strong> ${d.componentType}</div>
+        <div><strong>Inbound Manifest File:</strong> <span class="mono">./inbound/${d.inboundFileName}</span></div>
+        <div><strong>Staging Directory:</strong> <span class="mono">${d.stagingPath}/artifacts/</span></div>
+        <div>
+          <label class="form-label">All Preserved Files in Directory (${(d.files || []).length})</label>
+          <div class="terminal-box">${filesText}</div>
+        </div>
+        <div>
+          <label class="form-label">Description</label>
+          <div class="terminal-box">${d.description}</div>
+        </div>
+        <div>
+          <label class="form-label">Deployment Instructions &amp; Rollback Plan</label>
+          <div class="terminal-box">INSTRUCTIONS:\n${d.instructions}\n\nROLLBACK PLAN:\n${d.rollbackPlan}</div>
+        </div>
+        <div>
+          <label class="form-label">Distribution &amp; Audit Log</label>
+          <div class="terminal-box">${d.distributionLog}</div>
+        </div>
+      `;
+      document.getElementById('inspectModal').classList.add('open');
+    }
+
+    function openUpdateFromInspect() {
+      const id = currentInspectedId;
+      closeModal('inspectModal');
+      openUpdateModal(id);
+    }
+
+    async function updateStatusFromModal(status) {
+      if (!currentInspectedId) return;
+      await fetch(`/api/deployments/${currentInspectedId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      await loadAllData();
+      openInspectModal(currentInspectedId);
+    }
+
+    async function distributeDeployment(id) {
+      const res = await fetch(`/api/deployments/${id}/distribute`, { method: 'POST' });
+      if (res.ok) {
+        await loadAllData();
+        openInspectModal(id);
+      }
+    }
+
+    function renderInboundTab() {
+      const sel = document.getElementById('inboundFileSelector');
+      if (inboundFiles.length === 0) {
+        sel.innerHTML = '<option value="">No files in ./inbound/</option>';
+        document.getElementById('inboundFileContentBox').textContent = 'No ./inbound/*.txt files generated yet.';
+        return;
+      }
+      sel.innerHTML = inboundFiles.map((f, idx) =>
+        `<option value="${idx}">${f.fullPath}</option>`
+      ).join('');
+      renderSelectedInboundFile();
+    }
+
+    function renderSelectedInboundFile() {
+      const idx = document.getElementById('inboundFileSelector').value;
+      const file = inboundFiles[idx];
+      document.getElementById('inboundFileContentBox').textContent = file ? file.content : 'No file selected.';
+    }
+
+    async function saveDomainsFile() {
+      const content = document.getElementById('domainsEditorTextarea').value;
+      const res = await fetch('/api/domains', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+      if (res.ok) {
+        await loadAllData();
+        alert('Saved ./domains.txt on server.');
+      }
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    function switchView(view, btn) {
+      document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+      document.getElementById('view-' + view).classList.add('active');
+      if (btn) btn.classList.add('active');
+    }
+
+    window.addEventListener('DOMContentLoaded', loadAllData);
+  </script>
 </body>
 </html>
