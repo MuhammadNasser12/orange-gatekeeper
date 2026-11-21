@@ -1,8 +1,18 @@
-# Orange Egypt Integration Domains (One per line)
-Billing-BSCS
-CRM-Siebel
-Payment-Gateway
-Digital-MyOrange
-Order-Management
-B2B-Enterprise
-Core-Provisioning
+# Orange Egypt Integration Domains (One domain per line)
+BucketOnline
+CampaignHousekeep
+CampaignNearOnline
+CampaignOnline
+Critical
+CustomerOfferOnline
+DSLHouseKeep
+DSLNearOnline
+DSLOnline
+EVM
+HouseKeep
+HouseKeepOld
+MNP
+NearOnline
+OldNearOnline
+OldOnline
+ProductOnline
